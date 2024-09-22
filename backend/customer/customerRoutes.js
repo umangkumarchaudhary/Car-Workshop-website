@@ -1,12 +1,13 @@
-const express = require('express');
+const express = require('express'); 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+
 const router = express.Router();
 
-// Model for user
-const userSchema = new mongoose.Schema({
+// Customer Model
+const customerSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -25,14 +26,14 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['customer', 'staff'],
-        default: 'customer', // Default role is customer
+        enum: ['customer'],
+        default: 'customer',
     },
 });
 
-const User = mongoose.model('User', userSchema);
+const Customer = mongoose.model('Customer', customerSchema);
 
-// Middleware to authenticate user
+// Customer Authentication Middleware
 const authenticateToken = (req, res, next) => {
     const token = req.header('auth-token');
     if (!token) return res.status(401).send('Access Denied');
@@ -54,15 +55,7 @@ const isCustomer = (req, res, next) => {
     next();
 };
 
-// Middleware to check for staff role
-const isStaff = (req, res, next) => {
-    if (req.user.role !== 'staff') {
-        return res.status(403).json({ msg: 'Access restricted to staff only' });
-    }
-    next();
-};
-
-// Register a user
+// Register customer
 router.post('/signup', [
     body('email', 'Invalid email').isEmail(),
     body('password', 'Password must be at least 6 characters long').isLength({ min: 6 }),
@@ -72,39 +65,39 @@ router.post('/signup', [
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
 
     try {
-        let user = await User.findOne({ email });
+        let user = await Customer.findOne({ email });
         if (user) {
             return res.status(400).json({ msg: 'User already exists' });
         }
 
-        user = new User({
+        user = new Customer({
             name,
             email,
             password: await bcrypt.hash(password, 10),
             phone,
-            role: role || 'customer', // Assign role if provided
+            role: 'customer',
         });
 
         await user.save();
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-        res.header('auth-token', token).json({ token, role: user.role }); // Include role in the response
+        res.header('auth-token', token).json({ token, role: user.role });
     } catch (err) {
         res.status(500).send('Server error');
     }
 });
 
-// Login a user
+// Customer login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ msg: 'User not found' });
+        const user = await Customer.findOne({ email });
+        if (!user || user.role !== 'customer') {
+            return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -113,30 +106,25 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-        res.header('auth-token', token).json({ token, role: user.role }); // Include role in the response
+        res.header('auth-token', token).json({ token, role: user.role });
     } catch (err) {
         res.status(500).send('Server error');
     }
+});
+
+// Customer dashboard
+router.get('/dashboard', authenticateToken, isCustomer, (req, res) => {
+    res.json({ msg: 'Welcome to the customer dashboard' });
 });
 
 // Get user's profile
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-password');
+        const user = await Customer.findById(req.user.id).select('-password');
         res.json(user);
     } catch (err) {
         res.status(500).send('Server error');
     }
-});
-
-// Customer-only route example
-router.get('/customer/dashboard', authenticateToken, isCustomer, async (req, res) => {
-    res.json({ msg: 'Welcome to the customer dashboard' });
-});
-
-// Staff-only route example
-router.get('/staff/dashboard', authenticateToken, isStaff, async (req, res) => {
-    res.json({ msg: 'Welcome to the staff dashboard' });
 });
 
 module.exports = router;

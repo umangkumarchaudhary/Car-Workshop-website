@@ -1,18 +1,23 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-const Header = () => {
+const CHeader = () => {
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        localStorage.removeItem('auth-token');
+        navigate('/login');
+    };
+
     return (
-        <header>
-            <nav>
-                <ul>
-                    <li><Link to="/home">Home</Link></li>
-                    <li><Link to="/profile">Profile</Link></li>
-                    <li><Link to="/thoughts">Thoughts</Link></li>
-                </ul>
-            </nav>
-        </header>
+        <ul>
+            <li><Link to="/home">Home</Link></li>
+            <li><Link to="/profile">Profile</Link></li>
+            <li><Link to="/thoughts">Thoughts</Link></li>
+            <li><Link to="/bookingSystem">Booking System</Link></li>
+            <li><button onClick={handleLogout}>Logout</button></li>
+        </ul>
     );
 };
 
-export default Header;
+export default CHeader;

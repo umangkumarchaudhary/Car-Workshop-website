@@ -4,7 +4,7 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
-// Middleware for user authentication (from your existing code)
+// Middleware for user authentication (same as before)
 const authenticateToken = (req, res, next) => {
     const token = req.header('auth-token');
     if (!token) return res.status(401).send('Access Denied');
@@ -18,10 +18,10 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
-// User Role Middleware (for Staff Authorization)
+// Middleware for role-based authorization
 const authorizeStaff = (req, res, next) => {
     if (req.user.role !== 'staff') {
-        return res.status(403).send('Access Denied. Staff only.');
+        return res.status(403).json({ success: false, message: 'Access Denied. Staff only.' });
     }
     next();
 };
@@ -54,20 +54,31 @@ const bookingSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    repairSteps: [
+        {
+            step: String,
+            completed: Boolean,
+            timestamp: Date
+        }
+    ],
+    repairCost: {
+        type: Number,
+        default: 0
+    }
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
 
-// Create a new booking (Customer Route)
+// Customer: Create a new booking
 router.post('/book', [
-    authenticateToken, // Ensure the user is authenticated
+    authenticateToken,
     body('carDetails').not().isEmpty().withMessage('Car details are required'),
     body('issues').not().isEmpty().withMessage('Car issues are required'),
     body('serviceDate').isDate().withMessage('Valid service date is required'),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ success: false, errors: errors.array() });
     }
 
     const { carDetails, issues, serviceDate } = req.body;
@@ -80,59 +91,58 @@ router.post('/book', [
             serviceDate
         });
         await booking.save();
-        res.json({ message: 'Booking request created successfully', booking });
+        res.status(201).json({ success: true, message: 'Booking request created successfully', booking });
     } catch (err) {
-        res.status(500).send('Server error');
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// View all bookings (Staff Route)
+// Staff: View all bookings
 router.get('/bookings', authenticateToken, authorizeStaff, async (req, res) => {
     try {
         const bookings = await Booking.find().populate('customer', 'name email');
-        res.json(bookings);
+        res.status(200).json({ success: true, bookings });
     } catch (err) {
-        res.status(500).send('Server error');
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// View customer’s own bookings (Customer Route)
+// Customer: View own bookings
 router.get('/my-bookings', authenticateToken, async (req, res) => {
     try {
         const bookings = await Booking.find({ customer: req.user.id });
-        res.json(bookings);
+        res.status(200).json({ success: true, bookings });
     } catch (err) {
-        res.status(500).send('Server error');
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Update booking status (Accept/Reject - Staff Route)
+// Staff: Update booking status (Accept/Reject)
 router.put('/booking/:id/status', authenticateToken, authorizeStaff, async (req, res) => {
     const { status } = req.body;
 
     if (!['Accepted', 'Rejected'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status. Must be "Accepted" or "Rejected".' });
+        return res.status(400).json({ success: false, error: 'Invalid status. Must be "Accepted" or "Rejected".' });
     }
 
     try {
         const booking = await Booking.findById(req.params.id);
 
         if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' });
+            return res.status(404).json({ success: false, error: 'Booking not found' });
         }
 
         booking.status = status;
         await booking.save();
 
-        res.json({ message: `Booking ${status.toLowerCase()} successfully`, booking });
+        res.status(200).json({ success: true, message: `Booking ${status.toLowerCase()} successfully`, booking });
     } catch (err) {
-        res.status(500).send('Server error');
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 module.exports = router;
 
-// In the main server file (e.g., app.js), include the routes
+// In the main server file (app.js), include the routes
 // const bookingRoutes = require('./bookingSystem');
 // app.use('/api', bookingRoutes);
-

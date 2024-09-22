@@ -1,7 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db'); // Import your MongoDB connection
-const authRoutes = require('./authUser/auth'); // Import your auth routes
+const customerRoutes = require('./customer/customerRoutes');
+const staffRoutes = require('./staff/staffRoutes');
 const thoughtsRoutes = require('./thoughts/thoughts')
 const bookingRoutes = require('./bookingSystem/booking')
 const cors = require('cors'); // Import CORS middleware
@@ -20,7 +21,8 @@ app.use(express.json());
 app.use(cors());
 
 // Use auth routes
-app.use('/api/auth', authRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/staff', staffRoutes);
 app.use('/api/thoughts', thoughtsRoutes); // Use thoughts routes
 app.use('/api', bookingRoutes);
 

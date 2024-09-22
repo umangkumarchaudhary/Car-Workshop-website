@@ -30,19 +30,28 @@ const Authentication = () => {
                 const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
                 localStorage.setItem('auth-token', res.data.token); // Store token in localStorage
                 setToken(res.data.token);
-                alert('Login successful!');
-                fetchProfile(); // Fetch profile after login
+                handleRoleBasedRedirect(res.data.role); // Handle redirect based on role
             } else {
                 // Signup request
                 const res = await axios.post('http://localhost:5000/api/auth/signup', { name, email, password, phone, role });
                 localStorage.setItem('auth-token', res.data.token); // Store token in localStorage
                 setToken(res.data.token);
-                alert('Signup successful! Redirecting to profile...');
-                fetchProfile(); // Fetch profile after signup
+                handleRoleBasedRedirect(res.data.role); // Handle redirect based on role
             }
         } catch (err) {
             console.error(err);
             alert('Error occurred during authentication.');
+        }
+    };
+
+    // Handle role-based redirection
+    const handleRoleBasedRedirect = (role) => {
+        if (role === 'customer') {
+            navigate('/customer-dashboard'); // Redirect to customer dashboard
+        } else if (role === 'staff') {
+            navigate('/staff-dashboard'); // Redirect to staff dashboard
+        } else {
+            alert('Unknown role. Please contact support.');
         }
     };
 
@@ -53,7 +62,7 @@ const Authentication = () => {
             if (!storedToken) {
                 throw new Error('No token found, please login again.');
             }
-            
+
             const res = await axios.get('http://localhost:5000/api/auth/profile', {
                 headers: {
                     'auth-token': storedToken, // Ensure token is sent in the header

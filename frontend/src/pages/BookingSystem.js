@@ -10,15 +10,16 @@ const BookingSystem = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchBookings = async () => {
-    const authToken = localStorage.getItem('auth-token'); // Get token directly from localStorage
+    const authToken = localStorage.getItem('auth-token'); // Get token from localStorage
     if (authToken) {
       try {
-        const response = await axios.get('http://localhost:5000/api/my-bookings', {
+        const response = await axios.get('http://localhost:5000/api/my-bookings', {  // Full URL
           headers: {
             'auth-token': authToken,
           },
         });
-        setBookings(response.data);
+        console.log(response.data); 
+        setBookings(response.data.bookings); // Ensure the correct field is used
       } catch (err) {
         console.error('Error fetching bookings', err);
       }
@@ -27,15 +28,15 @@ const BookingSystem = () => {
 
   useEffect(() => {
     fetchBookings(); // Fetch bookings when the component mounts
-  }, []); // No dependency needed here since we're calling fetchBookings directly
+  }, []); 
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const authToken = localStorage.getItem('auth-token'); // Get token directly from localStorage
+    const authToken = localStorage.getItem('auth-token');
     try {
       await axios.post(
-        'http://localhost:5000/api/book',
+        'http://localhost:5000/api/book',  // Full URL
         {
           carDetails,
           issues,
